@@ -10,6 +10,7 @@ import Animated, {
   withTiming 
 } from 'react-native-reanimated';
 import { AnimatedView } from '../ui/AnimatedView';
+import { WishlistButton } from '../ui/WishlistButton';
 import { Colors, Typography, Spacing, Animations } from '../../constants';
 import { formatPrice } from '../../utils';
 
@@ -23,8 +24,16 @@ interface ProductCardProps {
     price: number;
     originalPrice?: number;
     image: string;
+    images?: string[];
     isNew?: boolean;
     isSale?: boolean;
+    description?: string;
+    category?: string;
+    brand?: string;
+    sizes?: any[];
+    colors?: any[];
+    inStock?: boolean;
+    tags?: string[];
   };
   index: number;
 }
@@ -90,9 +99,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, index }) => {
           )}
 
           {/* Wishlist Button */}
-          <TouchableOpacity style={styles.wishlistButton} activeOpacity={0.7}>
-            <Ionicons name="heart-outline" size={18} color={Colors.text.primary} />
-          </TouchableOpacity>
+          <View style={styles.wishlistButtonContainer}>
+            <WishlistButton product={product as any} size={18} showBackground={true} />
+          </View>
         </View>
 
         <View style={styles.productInfo}>
@@ -154,16 +163,10 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.bold,
     fontSize: 10,
   },
-  wishlistButton: {
+  wishlistButtonContainer: {
     position: 'absolute',
     top: Spacing.sm,
     right: Spacing.sm,
-    width: 28,
-    height: 28,
-    backgroundColor: Colors.background.overlayLight,
-    borderRadius: Spacing.radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   productInfo: {
     padding: Spacing.md,

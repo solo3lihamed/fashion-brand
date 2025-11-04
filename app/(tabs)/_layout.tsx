@@ -4,9 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing } from '../../constants';
 import { TabBarIcon } from '../../components/navigation/TabBarIcon';
 import { useCartStore } from '../../store/cartStore';
+import { useWishlistStore } from '../../store/wishlistStore';
 
 export default function TabLayout() {
   const cartItemCount = useCartStore((state) => state.items.length);
+  const wishlistItemCount = useWishlistStore((state) => state.getItemCount());
 
   return (
     <Tabs
@@ -67,6 +69,20 @@ export default function TabLayout() {
               name={focused ? 'search' : 'search-outline'}
               color={color}
               focused={focused}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="wishlist"
+        options={{
+          title: 'Wishlist',
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon
+              name={focused ? 'heart' : 'heart-outline'}
+              color={color}
+              focused={focused}
+              badge={wishlistItemCount > 0 ? wishlistItemCount : undefined}
             />
           ),
         }}

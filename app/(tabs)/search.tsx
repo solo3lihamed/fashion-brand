@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, FlatList, Keyboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../components/layout';
 import { Colors, Typography, Spacing } from '../../constants';
 import { useCartStore } from '../../store/cartStore';
+import { usePersonalizationStore } from '../../store/personalizationStore';
 import { AnimatedView } from '../../components/ui/AnimatedView';
 import { ProductCard } from '../../components/shop/ProductCard';
+import { AdvancedSearchEngine, SearchSuggestion, SearchResult } from '../../services/AdvancedSearchEngine';
 import { debounce } from '../../utils';
 
 // Mock search data - in a real app, this would come from an API
@@ -75,15 +77,23 @@ const recentSearches = [
 
 export default function Search() {
   const cartItemCount = useCartStore((state) => state.getTotalItems());
+  const { trackUserInteraction, getPersonalizedRecommendations } = usePersonalizationStore();
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+
+  const searchEngine = useRef(new AdvancedSearchEngine()).current;
+  const inputRef = useRef<TextInput>(null);
 
   // Debounced search function
   const debouncedSearch = debounce((query: string) => {
     if (query.trim().length === 0) {
-      setSearchResults([]);
+      setSearchResults(null);
       setHasSearched(false);
       setIsSearching(false);
       return;
@@ -91,32 +101,71 @@ export default function Search() {
 
     setIsSearching(true);
 
+    // Track search interaction
+    trackUserInteraction({
+      type: 'search',
+      data: { query },
+    });
+
     // Simulate API call delay
     setTimeout(() => {
-      const results = mockSearchData.filter(item =>
-        item.name.toLowerCase().includes(query.toLowerCase()) ||
-        item.category.toLowerCase().includes(query.toLowerCase()) ||
-        item.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
-      );
-
+      const results = searchEngine.searchProducts(query, mockSearchData);
       setSearchResults(results);
       setHasSearched(true);
       setIsSearching(false);
     }, 300);
   }, 300);
 
+  // Debounced autocomplete function
+  const debouncedAutocomplete = debounce((query: string) => {
+    if (query.trim().length >= 2) {
+      const autocompleteSuggestions = searchEngine.getAutocompleteSuggestions(query);
+      setSuggestions(autocompleteSuggestions);
+      setShowSuggestions(true);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, 150);
+
   useEffect(() => {
     debouncedSearch(searchQuery);
+    debouncedAutocomplete(searchQuery);
   }, [searchQuery]);
+
+  const handleSearchQueryChange = (text: string) => {
+    setSearchQuery(text);
+    setSelectedSuggestionIndex(-1);
+  };
+
+  const handleSuggestionPress = (suggestion: SearchSuggestion) => {
+    setSearchQuery(suggestion.text);
+    setShowSuggestions(false);
+    Keyboard.dismiss();
+  };
 
   const handlePopularSearch = (term: string) => {
     setSearchQuery(term);
+    setShowSuggestions(false);
   };
 
   const handleClearSearch = () => {
     setSearchQuery('');
-    setSearchResults([]);
+    setSearchResults(null);
     setHasSearched(false);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  const handleInputFocus = () => {
+    if (searchQuery.length >= 2) {
+      setShowSuggestions(true);
+    }
+  };
+
+  const handleInputBlur = () => {
+    // Delay hiding suggestions to allow for suggestion tap
+    setTimeout(() => setShowSuggestions(false), 150);
   };
 
   return (
@@ -137,12 +186,20 @@ export default function Search() {
             <View style={styles.searchInputContainer}>
               <Ionicons name="search" size={20} color={Colors.text.tertiary} style={styles.searchIcon} />
               <TextInput
+                ref={inputRef}
                 style={styles.searchInput}
                 placeholder="Search products..."
                 placeholderTextColor={Colors.text.tertiary}
                 value={searchQuery}
-                onChangeText={setSearchQuery}
+                onChangeText={handleSearchQueryChange}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
                 autoFocus={false}
+                returnKeyType="search"
+                onSubmitEditing={() => {
+                  setShowSuggestions(false);
+                  Keyboard.dismiss();
+                }}
               />
               {searchQuery.length > 0 && (
                 <TouchableOpacity onPress={handleClearSearch} style={styles.clearButton}>
@@ -152,6 +209,44 @@ export default function Search() {
             </View>
           </View>
         </AnimatedView>
+
+        {/* Autocomplete Suggestions */}
+        {showSuggestions && suggestions.length > 0 && (
+          <AnimatedView animation="slideDown" delay={100}>
+            <View style={styles.suggestionsContainer}>
+              <FlatList
+                data={suggestions}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item, index }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.suggestionItem,
+                      index === selectedSuggestionIndex && styles.selectedSuggestion,
+                    ]}
+                    onPress={() => handleSuggestionPress(item)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={
+                        item.type === 'product' ? 'shirt-outline' :
+                        item.type === 'category' ? 'grid-outline' :
+                        item.type === 'brand' ? 'business-outline' :
+                        'search-outline'
+                      }
+                      size={16}
+                      color={Colors.text.secondary}
+                      style={styles.suggestionIcon}
+                    />
+                    <Text style={styles.suggestionText}>{item.text}</Text>
+                    <Text style={styles.suggestionType}>{item.type}</Text>
+                  </TouchableOpacity>
+                )}
+                style={styles.suggestionsList}
+                keyboardShouldPersistTaps="handled"
+              />
+            </View>
+          </AnimatedView>
+        )}
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {!hasSearched && searchQuery.length === 0 ? (
@@ -199,15 +294,38 @@ export default function Search() {
                 <Text style={styles.loadingText}>Searching...</Text>
               </View>
             </AnimatedView>
-          ) : searchResults.length > 0 ? (
+          ) : searchResults && searchResults.products.length > 0 ? (
             // Results state
             <AnimatedView animation="fadeIn" delay={200}>
               <View style={styles.resultsSection}>
                 <Text style={styles.resultsTitle}>
-                  {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{searchQuery}"
+                  {searchResults.totalCount} result{searchResults.totalCount !== 1 ? 's' : ''} for "{searchQuery}"
                 </Text>
+
+                {/* Search Facets */}
+                {searchResults.facets.categories.length > 1 && (
+                  <View style={styles.facetsContainer}>
+                    <Text style={styles.facetsTitle}>Categories</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View style={styles.facetsList}>
+                        {searchResults.facets.categories.map((category, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.facetItem}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.facetText}>
+                              {category.name} ({category.count})
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  </View>
+                )}
+
                 <FlatList
-                  data={searchResults}
+                  data={searchResults.products}
                   renderItem={({ item, index }) => (
                     <ProductCard product={item} index={index} />
                   )}

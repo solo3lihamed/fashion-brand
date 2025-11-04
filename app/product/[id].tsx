@@ -14,8 +14,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Layout } from '../../components/layout';
 import { AnimatedView } from '../../components/ui/AnimatedView';
 import { Button } from '../../components/ui/Button';
+import { WishlistButton } from '../../components/ui/WishlistButton';
+import { ProductRecommendations } from '../../components/product/ProductRecommendations';
+import { ProductReviews } from '../../components/product/ProductReviews';
 import { Colors, Typography, Spacing } from '../../constants';
 import { useCartStore } from '../../store/cartStore';
+import { useRecentlyViewedStore } from '../../store/recentlyViewedStore';
 import { Product, Size, Color } from '../../types';
 import { formatPrice } from '../../utils';
 
@@ -91,6 +95,7 @@ export default function ProductDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { addItem, getTotalItems } = useCartStore();
+  const { addItem: addToRecentlyViewed } = useRecentlyViewedStore();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -109,6 +114,9 @@ export default function ProductDetail() {
         setProduct(foundProduct);
         setSelectedColor(foundProduct.colors.find(c => c.inStock) || foundProduct.colors[0]);
         setSelectedSize(foundProduct.sizes.find(s => s.inStock) || foundProduct.sizes[0]);
+
+        // Add to recently viewed
+        addToRecentlyViewed(foundProduct);
       }
       setIsLoading(false);
     }, 500);
@@ -247,9 +255,9 @@ export default function ProductDetail() {
             </View>
 
             {/* Wishlist Button */}
-            <TouchableOpacity style={styles.wishlistButton} activeOpacity={0.7}>
-              <Ionicons name="heart-outline" size={24} color={Colors.text.primary} />
-            </TouchableOpacity>
+            <View style={styles.wishlistButtonContainer}>
+              <WishlistButton product={product} size={24} showBackground={true} />
+            </View>
           </View>
         </AnimatedView>
 
@@ -426,6 +434,12 @@ export default function ProductDetail() {
             </View>
           </AnimatedView>
         </View>
+
+        {/* Product Reviews */}
+        <ProductReviews productId={product.id} />
+
+        {/* Product Recommendations */}
+        <ProductRecommendations currentProductId={product.id} />
       </ScrollView>
     </Layout>
   );
@@ -515,16 +529,10 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.bold,
     fontSize: 10,
   },
-  wishlistButton: {
+  wishlistButtonContainer: {
     position: 'absolute',
     top: Spacing.lg,
     right: Spacing.lg,
-    width: 44,
-    height: 44,
-    backgroundColor: Colors.background.overlayLight,
-    borderRadius: Spacing.radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   productInfo: {
     padding: Spacing.xl,

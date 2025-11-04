@@ -8,8 +8,13 @@ interface FilterBarProps {
     category: string;
     sortBy: string;
     priceRange: [number, number];
+    brands?: string[];
+    colors?: string[];
+    sizes?: string[];
+    rating?: number;
   };
   onFiltersChange: (filters: any) => void;
+  onOpenFilterModal: () => void;
 }
 
 const categories = [
@@ -26,7 +31,7 @@ const sortOptions = [
   { id: 'name-a-z', label: 'Name: A-Z' },
 ];
 
-export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFiltersChange }) => {
+export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFiltersChange, onOpenFilterModal }) => {
   const handleCategoryChange = (category: string) => {
     onFiltersChange({ ...filters, category });
   };
@@ -67,7 +72,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFiltersChange }
 
       {/* Sort and Filter Controls */}
       <View style={styles.controlsContainer}>
-        <TouchableOpacity style={styles.controlButton} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.controlButton}
+          onPress={onOpenFilterModal}
+          activeOpacity={0.7}
+        >
           <Ionicons name="funnel-outline" size={18} color={Colors.text.primary} />
           <Text style={styles.controlText}>Filter</Text>
         </TouchableOpacity>
