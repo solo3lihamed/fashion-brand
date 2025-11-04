@@ -1,33 +1,101 @@
-import { Tabs } from 'expo-router';
 import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, Typography, Spacing } from '../../constants';
+import { TabBarIcon } from '../../components/navigation/TabBarIcon';
+import { useCartStore } from '../../store/cartStore';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const cartItemCount = useCartStore((state) => state.items.length);
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarActiveTintColor: Colors.primary.black,
+        tabBarInactiveTintColor: Colors.text.tertiary,
+        tabBarStyle: {
+          backgroundColor: Colors.background.primary,
+          borderTopWidth: 1,
+          borderTopColor: Colors.border.light,
+          height: 80,
+          paddingBottom: 20,
+          paddingTop: 8,
+        },
+        tabBarLabelStyle: {
+          ...Typography.styles.caption,
+          fontWeight: Typography.weights.medium,
+          marginTop: 4,
+        },
+        tabBarIconStyle: {
+          marginBottom: -4,
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon
+              name={focused ? 'home' : 'home-outline'}
+              color={color}
+              focused={focused}
+            />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="shop"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Shop',
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon
+              name={focused ? 'bag' : 'bag-outline'}
+              color={color}
+              focused={focused}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="search"
+        options={{
+          title: 'Search',
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon
+              name={focused ? 'search' : 'search-outline'}
+              color={color}
+              focused={focused}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="cart"
+        options={{
+          title: 'Cart',
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon
+              name={focused ? 'basket' : 'basket-outline'}
+              color={color}
+              focused={focused}
+              badge={cartItemCount > 0 ? cartItemCount : undefined}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon
+              name={focused ? 'person' : 'person-outline'}
+              color={color}
+              focused={focused}
+            />
+          ),
         }}
       />
     </Tabs>
